@@ -60,3 +60,4 @@ dmypy.json
 .env
 
 chroma_store
+.deepeval
