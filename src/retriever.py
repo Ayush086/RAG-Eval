@@ -39,7 +39,7 @@ def load_transcripts():
 # 2. BUILD ---- chunk, embed once, and keep it on disk so we don't re-embed
 def load_store():
     # embeddings = CohereEmbeddings(model="embed-english-light-v3.0")
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name=os.getenv("EMBEDDING_MODEL"))
 
     if os.path.exists(DB_DIR):
         return Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
