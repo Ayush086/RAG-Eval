@@ -58,3 +58,5 @@ dmypy.json
 
 */.env
 .env
+
+chroma_store
