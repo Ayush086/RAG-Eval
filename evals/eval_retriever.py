@@ -11,11 +11,13 @@ from deepeval.metrics import (
     ContextualPrecisionMetric,
 )
 
+
 from src.retriever import build_retriever
 from models.groq_model import GroqModel
 
 
 load_dotenv()
+
 
 GOLDEN_PATH = "goldens/retriever_goldens.json"
 JUDGE_MODEL = "openai/gpt-oss-20b"
@@ -72,8 +74,10 @@ evaluate(
 
     # Prevent Groq rate-limit errors
     async_config=AsyncConfig(
-        run_async=False
-    ),
+    run_async=True,
+    max_concurrent=1,
+    throttle_value=20,
+),
 
     hyperparameters={
         "retriever": "base_k5",

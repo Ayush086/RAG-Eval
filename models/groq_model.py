@@ -12,13 +12,10 @@ class GroqModel(DeepEvalBaseLLM):
     def __init__(self, model_name: str):
         self.model_name = model_name
 
-        self.client = Groq(
-            api_key=os.environ["GROQ_API_KEY"]
-        )
+        api_key = os.environ["GROQ_API_KEY"]
 
-        self.async_client = AsyncGroq(
-            api_key=os.environ["GROQ_API_KEY"]
-        )
+        self.client = Groq(api_key=api_key)
+        self.async_client = AsyncGroq(api_key=api_key)
 
     def load_model(self):
         return self.client
@@ -26,86 +23,100 @@ class GroqModel(DeepEvalBaseLLM):
     def get_model_name(self):
         return self.model_name
 
-    @staticmethod
-    def _parse_response(
-        output: str,
-        schema: BaseModel | None
-    ):
+    def _build_messages(self, prompt: str, schema: BaseModel | None):
         if schema is None:
-            return output
+            return [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ]
 
-        output = output.strip()
+        schema_json = json.dumps(
+            schema.model_json_schema(),
+            indent=2,
+        )
 
-        # Remove markdown JSON fences if the model adds them.
-        if output.startswith("```json"):
-            output = output[len("```json"):].strip()
-
-        elif output.startswith("```"):
-            output = output[len("```"):].strip()
-
-        if output.endswith("```"):
-            output = output[:-3].strip()
-
-        data = json.loads(output)
-
-        return schema.model_validate(data)
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "You are an evaluation judge. "
+                    "Return ONLY a valid JSON object. "
+                    "Do not use markdown. "
+                    "Do not wrap the JSON in ```json fences. "
+                    "The JSON must conform to this schema:\n\n"
+                    f"{schema_json}"
+                ),
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ]
 
     def generate(
         self,
         prompt: str,
-        schema: BaseModel | None = None
+        schema: BaseModel | None = None,
     ):
+        messages = self._build_messages(prompt, schema)
+
         response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an evaluation judge. "
-                        "Return ONLY a valid JSON object. "
-                        "Do not use Markdown or code fences."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
+            messages=messages,
             response_format={
-                "type": "json_object"
+                "type": "json_object",
             },
+            reasoning_effort="low",
         )
 
         output = response.choices[0].message.content
 
-        return self._parse_response(output, schema)
+        if not output:
+            raise RuntimeError("Groq returned an empty response.")
+
+        if schema is None:
+            return output
+
+        try:
+            data = json.loads(output)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                f"Groq returned invalid JSON:\n{output}"
+            ) from e
+
+        return schema.model_validate(data)
 
     async def a_generate(
         self,
         prompt: str,
-        schema: BaseModel | None = None
+        schema: BaseModel | None = None,
     ):
+        messages = self._build_messages(prompt, schema)
+
         response = await self.async_client.chat.completions.create(
             model=self.model_name,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an evaluation judge. "
-                        "Return ONLY a valid JSON object. "
-                        "Do not use Markdown or code fences."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
+            messages=messages,
             response_format={
-                "type": "json_object"
+                "type": "json_object",
             },
+            reasoning_effort="low",
         )
 
         output = response.choices[0].message.content
 
-        return self._parse_response(output, schema)
+        if not output:
+            raise RuntimeError("Groq returned an empty response.")
+
+        if schema is None:
+            return output
+
+        try:
+            data = json.loads(output)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                f"Groq returned invalid JSON:\n{output}"
+            ) from e
+
+        return schema.model_validate(data)
