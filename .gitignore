@@ -55,3 +55,6 @@ dmypy.json
 
 # Pyre type checker
 .py
+
+*/.env
+.env
