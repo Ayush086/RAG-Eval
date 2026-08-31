@@ -1,0 +1,1 @@
+code will not work with freely available models because deepeval follows a strict validation strategy which is breaking after generating the response. But it works properly with OpenAI models
