@@ -6,12 +6,12 @@ from deepeval import evaluate
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import ContextualRecallMetric, ContextualPrecisionMetric
 
-from src.retriever import build_retriever
+from src.reranker import RerankingRetriever
 
 load_dotenv()
 
 GOLDEN_PATH = "goldens/retriever_goldens.json"
-JUDGE_MODEL = "command-a-05-2025"  
+JUDGE_MODEL = "command-a-03-2025"  
 THRESHOLD = 0.7
 
 
@@ -22,7 +22,7 @@ with open(GOLDEN_PATH) as f:
 
 # 2. RUN THE RETRIEVER on each question to fill retrieval_context,
 #    then build one test case per golden.
-retriever = build_retriever()
+retriever = RerankingRetriever()
 
 test_cases = []
 
